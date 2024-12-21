@@ -1,0 +1,23 @@
+# course config files
+*.yaml
+
+# gradle
+.gradle/
+/gradle/
+/gradlew
+/gradlew.bat
+build
+out
+
+# idea config
+.idea
+
+# stages
+/Smart Calculator with Java/2+2/
+/Smart Calculator with Java/2+2+/
+/Smart Calculator with Java/Count them all/
+/Smart Calculator with Java/Add subtractions/
+/Smart Calculator with Java/Error/
+/Smart Calculator with Java/Variables/
+/Smart Calculator with Java/I’ve got the power/
+/Smart Calculator with Java/Very big/
