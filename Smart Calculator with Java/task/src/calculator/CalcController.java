@@ -1,5 +1,7 @@
 package calculator;
 
+import java.util.Arrays;
+
 public class CalcController {
     private final CalcModel model;
     private final CalcView view;
@@ -22,22 +24,24 @@ public class CalcController {
                 return;
             }
 
+            if ("/help".equals(input)) {
+                view.printOutput("The program calculates the sum of numbers");
+                continue;
+            }
+
             String[] parts = input.trim().split("\\s+");
 
             if (parts.length == 1) {
                 view.printOutput(parts[0]);
             } else {
                 try {
-                    int first = Integer.parseInt(parts[0]);
-                    int second = Integer.parseInt(parts[1]);
-                    int result = model.add(first, second);
-                    view.printOutput(String.valueOf(result));
+                    int[] nums = Arrays.stream(parts).mapToInt(Integer::parseInt).toArray();
+                    long sum = model.add(nums);
+                    view.printOutput(String.valueOf(sum));
                 } catch (NumberFormatException e) {
                     System.out.println("Invalid input. Please enter parts or '/exit'.");
                 }
             }
         }
     }
-
-
 }

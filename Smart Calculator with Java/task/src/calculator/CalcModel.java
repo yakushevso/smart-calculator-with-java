@@ -2,7 +2,12 @@ package calculator;
 
 public class CalcModel {
 
-    public int add(int first, int second) {
-        return first + second;
+    public long add(int[] nums) {
+        long res = 0;
+
+        for (int i : nums) {
+            res += i;
+        }
+        return res;
     }
 }
