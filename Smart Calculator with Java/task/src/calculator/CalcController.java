@@ -1,7 +1,5 @@
 package calculator;
 
-import java.util.Arrays;
-
 public class CalcController {
     private final CalcModel model;
     private final CalcView view;
@@ -25,23 +23,30 @@ public class CalcController {
             }
 
             if ("/help".equals(input)) {
-                view.printOutput("The program calculates the sum of numbers");
+                view.printOutput("The program performs addition and subtraction of numbers");
                 continue;
             }
 
-            String[] parts = input.trim().split("\\s+");
+            String[] parts = simplifyOperators(input).split("\\s+");
 
             if (parts.length == 1) {
                 view.printOutput(parts[0]);
             } else {
                 try {
-                    int[] nums = Arrays.stream(parts).mapToInt(Integer::parseInt).toArray();
-                    long sum = model.add(nums);
-                    view.printOutput(String.valueOf(sum));
+                    long res = model.calc(parts);
+                    view.printOutput(String.valueOf(res));
                 } catch (NumberFormatException e) {
                     System.out.println("Invalid input. Please enter parts or '/exit'.");
                 }
             }
         }
+    }
+
+    private static String simplifyOperators(String input) {
+        return input.replaceAll("--", "+")
+                .replaceAll("\\+{2,}", "+")
+                .replaceAll("-{2,}", "-")
+                .replaceAll("\\+-", "-")
+                .replaceAll("-\\+", "-");
     }
 }
