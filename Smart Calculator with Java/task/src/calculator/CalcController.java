@@ -17,29 +17,42 @@ public class CalcController {
                 continue;
             }
 
-            if ("/exit".equals(input)) {
-                view.printOutput("Bye!");
-                return;
-            }
-
-            if ("/help".equals(input)) {
-                view.printOutput("The program performs addition and subtraction of numbers");
-                continue;
-            }
-
-            String[] parts = simplifyOperators(input).split("\\s+");
-
-            if (parts.length == 1) {
-                view.printOutput(parts[0]);
-            } else {
-                try {
-                    long res = model.calc(parts);
-                    view.printOutput(String.valueOf(res));
-                } catch (NumberFormatException e) {
-                    System.out.println("Invalid input. Please enter parts or '/exit'.");
+            if (input.startsWith("/")) {
+                switch (input) {
+                    case "/exit" -> {
+                        view.printOutput("Bye!");
+                        return;
+                    }
+                    case "/help" -> {
+                        view.printOutput("The program performs addition and subtraction of numbers");
+                        continue;
+                    }
+                    default -> {
+                        view.printOutput("Unknown command");
+                        continue;
+                    }
                 }
             }
+
+            String formattedInput = simplifyOperators(input);
+
+            if (isValidInput(formattedInput)) {
+                String[] parts = formattedInput.split("\\s+");
+
+                if (parts.length == 1) {
+                    view.printOutput(parts[0]);
+                } else {
+                    long result = model.calc(parts);
+                    view.printOutput(String.valueOf(result));
+                }
+            } else {
+                view.printOutput("Invalid expression");
+            }
         }
+    }
+
+    private boolean isValidInput(String input) {
+        return input.matches("^(-?\\d+)(\\s[-+*/]\\s-?\\d+)*$");
     }
 
     private static String simplifyOperators(String input) {
@@ -47,6 +60,7 @@ public class CalcController {
                 .replaceAll("\\+{2,}", "+")
                 .replaceAll("-{2,}", "-")
                 .replaceAll("\\+-", "-")
-                .replaceAll("-\\+", "-");
+                .replaceAll("-\\+", "-")
+                .replaceAll("\\+(?=\\d)", "");
     }
 }
