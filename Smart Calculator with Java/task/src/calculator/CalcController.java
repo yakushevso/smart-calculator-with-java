@@ -1,12 +1,19 @@
 package calculator;
 
+import java.util.HashMap;
+import java.util.Map;
+
 public class CalcController {
-    private final CalcModel model;
     private final CalcView view;
+    private final CalcModel model;
+    private final Map<String, String> archive;
+    private static final String EXIT = "/exit";
+    private static final String HELP = "/help";
 
     public CalcController(CalcModel model, CalcView view) {
         this.model = model;
         this.view = view;
+        this.archive = new HashMap<>();
     }
 
     public void run() {
@@ -19,12 +26,13 @@ public class CalcController {
 
             if (input.startsWith("/")) {
                 switch (input) {
-                    case "/exit" -> {
+                    case EXIT -> {
                         view.printOutput("Bye!");
                         return;
                     }
-                    case "/help" -> {
-                        view.printOutput("The program performs addition and subtraction of numbers");
+                    case HELP -> {
+                        view.printOutput("The program performs addition and subtraction of numbers " +
+                                "with the ability to save variables");
                         continue;
                     }
                     default -> {
@@ -34,33 +42,72 @@ public class CalcController {
                 }
             }
 
-            String formattedInput = simplifyOperators(input);
+            String normalizedInput = normalizeOperators(input);
 
-            if (isValidInput(formattedInput)) {
-                String[] parts = formattedInput.split("\\s+");
-
-                if (parts.length == 1) {
-                    view.printOutput(parts[0]);
-                } else {
-                    long result = model.calc(parts);
-                    view.printOutput(String.valueOf(result));
-                }
+            if (normalizedInput.contains("=")) {
+                assignment(normalizedInput);
             } else {
-                view.printOutput("Invalid expression");
+                calculation(normalizedInput);
             }
         }
     }
 
-    private boolean isValidInput(String input) {
-        return input.matches("^(-?\\d+)(\\s[-+*/]\\s-?\\d+)*$");
+    private void assignment(String input) {
+        if (input.matches("^[a-zA-Z]+\\s*=\\s*(\\d+|[a-zA-Z]+)$")) {
+            String[] pairs = input.split("\\s*=\\s*");
+            String value = pairs[1].matches("\\d+") ? pairs[1] : resolveValue(pairs[1]);
+
+            if (value != null) {
+                archive.put(pairs[0], value);
+            }
+        } else if (input.matches("^[a-zA-Z]+\\s*=.*")) {
+            view.printOutput("Invalid assignment");
+        } else {
+            view.printOutput("Invalid identifier");
+        }
     }
 
-    private static String simplifyOperators(String input) {
+    private void calculation(String input) {
+        if (input.matches("^(-?\\d+|[a-zA-Z]+)(\\s[-+*/]\\s(-?\\d+|[a-zA-Z]+))*$")) {
+            String[] parts = input.split("\\s+");
+
+            for (int i = 0; i < parts.length; i++) {
+                if (parts[i].matches("[a-zA-Z]+")) {
+                    String resolvedValue = resolveValue(parts[i]);
+                    if (resolvedValue != null) {
+                        parts[i] = resolvedValue;
+                    } else {
+                        return;
+                    }
+                }
+            }
+
+            if (parts.length == 1) {
+                view.printOutput(parts[0]);
+            } else {
+                view.printOutput(String.valueOf(model.calc(parts)));
+            }
+        } else {
+            view.printOutput("Invalid expression");
+        }
+    }
+
+    private String resolveValue(String key) {
+        if (archive.containsKey(key)) {
+            return archive.get(key);
+        } else {
+            view.printOutput("Unknown variable");
+            return null;
+        }
+    }
+
+    private static String normalizeOperators(String input) {
         return input.replaceAll("--", "+")
                 .replaceAll("\\+{2,}", "+")
                 .replaceAll("-{2,}", "-")
                 .replaceAll("\\+-", "-")
                 .replaceAll("-\\+", "-")
-                .replaceAll("\\+(?=\\d)", "");
+                .replaceAll("\\+(?=\\d)", "")
+                .replaceAll("={2,}", "=");
     }
 }
