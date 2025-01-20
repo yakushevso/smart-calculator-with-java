@@ -1,19 +1,15 @@
 package calculator;
 
-import java.util.HashMap;
-import java.util.Map;
+import java.util.*;
+import java.util.regex.Pattern;
 
 public class CalcController {
     private final CalcView view;
     private final CalcModel model;
-    private final Map<String, String> archive;
-    private static final String EXIT = "/exit";
-    private static final String HELP = "/help";
 
     public CalcController(CalcModel model, CalcView view) {
         this.model = model;
         this.view = view;
-        this.archive = new HashMap<>();
     }
 
     public void run() {
@@ -26,88 +22,115 @@ public class CalcController {
 
             if (input.startsWith("/")) {
                 switch (input) {
-                    case EXIT -> {
-                        view.printOutput("Bye!");
+                    case "/exit" -> {
+                        view.printOutput(Messages.BYE);
                         return;
                     }
-                    case HELP -> {
-                        view.printOutput("The program performs addition and subtraction of numbers " +
-                                "with the ability to save variables");
+                    case "/help" -> {
+                        view.printOutput(Messages.HELP);
                         continue;
                     }
                     default -> {
-                        view.printOutput("Unknown command");
+                        view.printOutput(Messages.UNKNOWN_COMMAND);
                         continue;
                     }
                 }
             }
 
-            String normalizedInput = normalizeOperators(input);
+            String normalizedInput = normalizeInput(input);
 
             if (normalizedInput.contains("=")) {
-                assignment(normalizedInput);
+                assignmentVariable(normalizedInput);
             } else {
-                calculation(normalizedInput);
-            }
-        }
-    }
+                if (isValidExpression(normalizedInput)) {
+                    String[] pairs = normalizedInput.split("\\s");
 
-    private void assignment(String input) {
-        if (input.matches("^[a-zA-Z]+\\s*=\\s*(\\d+|[a-zA-Z]+)$")) {
-            String[] pairs = input.split("\\s*=\\s*");
-            String value = pairs[1].matches("\\d+") ? pairs[1] : resolveValue(pairs[1]);
-
-            if (value != null) {
-                archive.put(pairs[0], value);
-            }
-        } else if (input.matches("^[a-zA-Z]+\\s*=.*")) {
-            view.printOutput("Invalid assignment");
-        } else {
-            view.printOutput("Invalid identifier");
-        }
-    }
-
-    private void calculation(String input) {
-        if (input.matches("^(-?\\d+|[a-zA-Z]+)(\\s[-+*/]\\s(-?\\d+|[a-zA-Z]+))*$")) {
-            String[] parts = input.split("\\s+");
-
-            for (int i = 0; i < parts.length; i++) {
-                if (parts[i].matches("[a-zA-Z]+")) {
-                    String resolvedValue = resolveValue(parts[i]);
-                    if (resolvedValue != null) {
-                        parts[i] = resolvedValue;
+                    if (pairs.length == 1) {
+                        if (pairs[0].matches(Patterns.LETTERS)) {
+                            view.printOutput(Objects.requireNonNullElse(
+                                    model.getValue(pairs[0]), Messages.UNKNOWN_VARIABLE));
+                        } else {
+                            view.printOutput(pairs[0]);
+                        }
                     } else {
-                        return;
+                        view.printOutput(model.calc(pairs));
                     }
+                } else {
+                    view.printOutput(Messages.INVALID_EXPRESSION);
                 }
             }
+        }
+    }
 
-            if (parts.length == 1) {
-                view.printOutput(parts[0]);
+    private void assignmentVariable(String input) {
+        if (input.matches(Patterns.VALID_ASSIGNMENT)) {
+            String[] pairs = input.split(Patterns.ASSIGNMENT_OPERATOR);
+
+            if (pairs[1].matches(Patterns.LETTERS)) {
+                if (model.getValue(pairs[1]) == null) {
+                    view.printOutput(Messages.UNKNOWN_VARIABLE);
+                } else {
+                    model.setValue(pairs[0], model.getValue(pairs[1]));
+                }
             } else {
-                view.printOutput(String.valueOf(model.calc(parts)));
+                model.setValue(pairs[0], pairs[1]);
             }
+        } else if (input.matches(Patterns.VALID_VARIABLE_NAME)) {
+            view.printOutput(Messages.INVALID_ASSIGNMENT);
         } else {
-            view.printOutput("Invalid expression");
+            view.printOutput(Messages.INVALID_IDENTIFIER);
         }
     }
 
-    private String resolveValue(String key) {
-        if (archive.containsKey(key)) {
-            return archive.get(key);
-        } else {
-            view.printOutput("Unknown variable");
-            return null;
-        }
+    private boolean isValidExpression(String input) {
+        return isValidOperators(input)
+                && isOperatorsAndOperandsBalanced(input)
+                && isBracketsBalanced(input);
     }
 
-    private static String normalizeOperators(String input) {
-        return input.replaceAll("--", "+")
-                .replaceAll("\\+{2,}", "+")
-                .replaceAll("-{2,}", "-")
-                .replaceAll("\\+-", "-")
-                .replaceAll("-\\+", "-")
-                .replaceAll("\\+(?=\\d)", "")
-                .replaceAll("={2,}", "=");
+    private boolean isValidOperators(String input) {
+        return !Pattern.compile(Patterns.INVALID_OPERATORS).matcher(input).find();
+    }
+
+    private boolean isOperatorsAndOperandsBalanced(String input) {
+        return input.matches(Patterns.VALID_EXPRESSION);
+    }
+
+    private boolean isBracketsBalanced(String input) {
+        String[] parts = input.split("\\s");
+        Deque<String> stack = new ArrayDeque<>();
+        Map<String, String> brackets = new HashMap<>(Map.of(")", "("));
+
+        for (String part : parts) {
+            if (brackets.containsValue(part)) {
+                stack.push(part);
+            } else if (brackets.containsKey(part)) {
+                if (stack.isEmpty() || !Objects.equals(brackets.get(part), stack.pop())) {
+                    return false;
+                }
+            }
+        }
+
+        return stack.isEmpty();
+    }
+
+    private String normalizeInput(String input) {
+        Pattern pattern = Pattern.compile("(\\+\\+)|(--)");
+
+        while (pattern.matcher(input).find()) {
+            input = input.replaceAll("(\\+\\+)|(--)", "+")
+                    .replaceAll("\\+-|-\\+", "-");
+        }
+
+        return input.replaceAll("(?<!\\d|[)])\\+(?=\\d)", "")
+                .replaceAll("-(?!\\d)|(?<=\\d)-(?=\\d)", " - ")
+                .replaceAll("\\+", " + ")
+                .replaceAll("\\*", " * ")
+                .replaceAll("/", " / ")
+                .replaceAll("\\(", " ( ")
+                .replaceAll("\\)", " ) ")
+                .replaceAll("\\^", " ^ ")
+                .replaceAll("\\s+", " ").trim()
+                .replaceAll("(?=^[-+]\\s[(])|(?<=[(]\\s)(?=[-+]\\s[(])", "0 ");
     }
 }
