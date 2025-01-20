@@ -1,5 +1,6 @@
 package calculator;
 
+import java.math.BigInteger;
 import java.util.ArrayDeque;
 import java.util.Deque;
 import java.util.HashMap;
@@ -28,20 +29,20 @@ public class CalcModel {
     }
 
     private String executeOperation(String operator, Deque<String> values) {
-        int a = Integer.parseInt(values.pop());
-        int b = Integer.parseInt(values.pop());
+        BigInteger a = new BigInteger(values.pop());
+        BigInteger b = new BigInteger(values.pop());
 
         return switch (operator) {
-            case "+" -> String.valueOf(b + a);
-            case "-" -> String.valueOf(b - a);
-            case "*" -> String.valueOf(b * a);
+            case "+" -> String.valueOf(b.add(a));
+            case "-" -> String.valueOf(b.subtract(a));
+            case "*" -> String.valueOf(b.multiply(a));
             case "/" -> {
-                if (a == 0) {
+                if (a.equals(BigInteger.ZERO)) {
                     throw new ArithmeticException("Division by zero");
                 }
-                yield String.valueOf(b / a);
+                yield String.valueOf(b.divide(a));
             }
-            case "^" -> String.valueOf((int) Math.pow(b, a));
+            case "^" -> String.valueOf(b.pow(a.intValueExact()));
             default -> throw new IllegalStateException("Unexpected value: " + operator);
         };
     }
